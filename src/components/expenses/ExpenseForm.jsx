@@ -178,16 +178,22 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
                <div className="absolute top-0 right-0 p-4 opacity-10">
                   <Sparkles className="w-16 h-16 text-blue-600" />
                </div>
+
                <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-blue-500" /> Magic Add
                </h3>
+
                <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
                   Describe your transaction in plain English, and AI will fill out the form for you instantly.
                </p>
-               <div className="flex gap-2 relative z-10">
+
+               {/* Responsive Container */}
+               <div className="flex flex-col sm:flex-row gap-2 relative z-10">
+
+                  {/* Input */}
                   <input
                      type="text"
-                     className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                     className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                      placeholder="e.g. Spent $15 on Starbucks..."
                      value={nlpText}
                      onChange={e => setNlpText(e.target.value)}
@@ -199,18 +205,43 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
                      }}
                      disabled={aiParsing || isListening}
                   />
-                  <Button
-                     type="button"
-                     variant="outline"
-                     onClick={toggleVoice}
-                     disabled={aiParsing}
-                     className={`shrink-0 transition-colors ${isListening ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30'}`}
-                  >
-                     {isListening ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
-                  </Button>
-                  <Button type="button" onClick={() => handleMagicAdd(nlpText)} disabled={aiParsing || !nlpText.trim()}>
-                     {aiParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Parse'}
-                  </Button>
+
+                  {/* Buttons Wrapper */}
+                  <div className="flex gap-2 w-full sm:w-auto">
+
+                     {/* Mic Button */}
+                     <Button
+                        type="button"
+                        variant="outline"
+                        onClick={toggleVoice}
+                        disabled={aiParsing}
+                        className={`flex-1 sm:flex-none justify-center transition-colors ${isListening
+                              ? 'bg-red-50 text-red-600 border-red-200 animate-pulse'
+                              : 'hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/30'
+                           }`}
+                     >
+                        {isListening ? (
+                           <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                           <Mic className="w-4 h-4" />
+                        )}
+                     </Button>
+
+                     {/* Parse Button */}
+                     <Button
+                        type="button"
+                        onClick={() => handleMagicAdd(nlpText)}
+                        disabled={aiParsing || !nlpText.trim()}
+                        className="flex-1 sm:flex-none justify-center"
+                     >
+                        {aiParsing ? (
+                           <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                           'Parse'
+                        )}
+                     </Button>
+
+                  </div>
                </div>
             </div>
          )}
