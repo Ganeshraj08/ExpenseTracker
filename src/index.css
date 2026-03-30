@@ -7,3 +7,14 @@
     @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-50 transition-colors duration-200;
   }
 }
+
+/* Remove focus outlines from Recharts elements */
+.recharts-pie-sector:focus,
+.recharts-sector:focus,
+.recharts-surface:focus,
+.recharts-active-dot:focus,
+.recharts-wrapper:focus,
+path:focus,
+g:focus {
+  outline: none !important;
+}

@@ -33,7 +33,7 @@ export function Sidebar({ isMobileOpen, onClose }) {
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2 text-primary dark:text-blue-500 font-bold text-xl">
             <ReceiptText className="w-6 h-6" />
-            <span>வரவு-செலவு</span>
+            <span className="max-md:text-sm" >வரவு-செலவு</span>
           </div>
           <button
             className="md:hidden text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white p-1 rounded-lg transition-colors"
@@ -67,28 +67,28 @@ export function Sidebar({ isMobileOpen, onClose }) {
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
           {user ? (
             <div
-              className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg group transition-colors"
+              className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg group transition-colors overflow-hidden"
               onClick={logout}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <img
                   src={
                     user.photoURL ||
                     `https://ui-avatars.com/api/?name=${user.email}`
                   }
                   alt="User"
-                  className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700"
+                  className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex-shrink-0"
                 />
-                <div className="text-sm overflow-hidden">
-                  <p className="font-medium text-slate-900 dark:text-slate-100 truncate max-w-[100px]">
+                <div className="text-sm overflow-hidden flex-1 min-w-0 pr-2">
+                  <p className="font-medium text-slate-900 dark:text-slate-100 truncate">
                     {user.displayName || "User"}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[100px]">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                     {user.email}
                   </p>
                 </div>
               </div>
-              <div className="text-xs text-red-500 dark:text-red-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="text-xs text-red-500 dark:text-red-400 font-medium opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
                 Logout
               </div>
             </div>

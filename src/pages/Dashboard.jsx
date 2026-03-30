@@ -44,12 +44,12 @@ const renderActiveShape = (props) => {
   } = props;
 
   return (
-    <g className="transition-all duration-300">
+    <g className="transition-all duration-300" style={{ outline: 'none' }}>
       <text
         x={cx}
         y={cy - 12}
         textAnchor="middle"
-        className="text-sm font-bold fill-slate-900 dark:fill-slate-100"
+        className="text-sm font-bold fill-slate-900 dark:fill-slate-100 pointer-events-none"
       >
         {payload.name?.substring(0, 14)}
         {payload.name?.length > 14 ? "..." : ""}
@@ -58,7 +58,7 @@ const renderActiveShape = (props) => {
         x={cx}
         y={cy + 8}
         textAnchor="middle"
-        className="text-xs font-semibold fill-slate-600 dark:fill-slate-300"
+        className="text-xs font-semibold fill-slate-600 dark:fill-slate-300 pointer-events-none"
       >
         {formatCurrency(value)}
       </text>
@@ -66,7 +66,7 @@ const renderActiveShape = (props) => {
         x={cx}
         y={cy + 24}
         textAnchor="middle"
-        className="text-[10px] font-medium fill-slate-400 dark:fill-slate-500"
+        className="text-[10px] font-medium fill-slate-400 dark:fill-slate-500 pointer-events-none"
       >
         ({(percent * 100).toFixed(1)}%)
       </text>
@@ -78,6 +78,7 @@ const renderActiveShape = (props) => {
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
+        className="cursor-pointer"
       />
       <Sector
         cx={cx}
@@ -87,6 +88,7 @@ const renderActiveShape = (props) => {
         innerRadius={outerRadius + 8}
         outerRadius={outerRadius + 12}
         fill={fill}
+        className="cursor-pointer"
       />
     </g>
   );
@@ -258,33 +260,52 @@ export function Dashboard() {
                 <p className="text-xs sm:text-sm">No expense data</p>
               </div>
             ) : (
-              <div className="h-64 sm:h-72 w-full mt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      activeIndex={activeIndex}
-                      activeShape={renderActiveShape}
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={65}
-                      outerRadius={85}
-                      paddingAngle={4}
-                      dataKey="value"
-                      onMouseEnter={(_, index) => setActiveIndex(index)}
-                      stroke="none"
+              <div className="w-full flex-1 flex flex-col mt-2" onMouseLeave={() => setActiveIndex(0)}>
+                <div className="h-56 sm:h-72 w-full flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        activeIndex={activeIndex}
+                        activeShape={renderActiveShape}
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={65}
+                        outerRadius={85}
+                        paddingAngle={4}
+                        dataKey="value"
+                        onMouseEnter={(_, index) => setActiveIndex(index)}
+                        onMouseLeave={() => {}}
+                        onClick={(_, index) => setActiveIndex(index)}
+                        stroke="none"
+                        style={{ outline: "none" }}
+                        isAnimationActive={false}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="w-full grid grid-cols-2 gap-2 mt-2 px-2 pb-2">
+                  {pieData.slice(0, 4).map((entry, index) => (
+                    <div
+                      key={entry.name}
+                      className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${activeIndex === index ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      onClick={() => setActiveIndex(index)}
                     >
-                      {pieData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={COLORS[index % COLORS.length]}
-                        />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="text-center mb-2 text-xs text-slate-500 pb-2">
-                  Hover to view values
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{entry.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-center text-[10px] text-slate-400 mt-auto">
+                  Select segment for details
                 </div>
               </div>
             )}

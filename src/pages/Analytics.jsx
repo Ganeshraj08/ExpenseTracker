@@ -13,14 +13,14 @@ const renderActiveShape = (props) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props;
 
   return (
-    <g className="transition-all duration-300">
-      <text x={cx} y={cy - 12} textAnchor="middle" className="text-sm font-bold fill-slate-900 dark:fill-slate-100">
+    <g className="transition-all duration-300" style={{ outline: 'none' }}>
+      <text x={cx} y={cy - 12} textAnchor="middle" className="text-sm font-bold fill-slate-900 dark:fill-slate-100 pointer-events-none">
         {payload.name?.substring(0, 14)}{payload.name?.length > 14 ? '...' : ''}
       </text>
-      <text x={cx} y={cy + 8} textAnchor="middle" className="text-xs font-semibold fill-slate-600 dark:fill-slate-300">
+      <text x={cx} y={cy + 8} textAnchor="middle" className="text-xs font-semibold fill-slate-600 dark:fill-slate-300 pointer-events-none">
         {formatCurrency(value)}
       </text>
-      <text x={cx} y={cy + 24} textAnchor="middle" className="text-[10px] font-medium fill-slate-400 dark:fill-slate-500">
+      <text x={cx} y={cy + 24} textAnchor="middle" className="text-[10px] font-medium fill-slate-400 dark:fill-slate-500 pointer-events-none">
         ({(percent * 100).toFixed(1)}%)
       </text>
       <Sector
@@ -31,6 +31,7 @@ const renderActiveShape = (props) => {
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
+        className="cursor-pointer"
       />
       <Sector
         cx={cx}
@@ -40,6 +41,7 @@ const renderActiveShape = (props) => {
         innerRadius={outerRadius + 8}
         outerRadius={outerRadius + 12}
         fill={fill}
+        className="cursor-pointer"
       />
     </g>
   );
@@ -242,8 +244,8 @@ export function Analytics() {
             {pieData.length === 0 ? (
                <div className="h-64 w-full flex items-center justify-center text-slate-500 dark:text-slate-400">No expense data to analyze</div>
             ) : (
-               <>
-                 <div className="h-80 w-full min-w-[200px]">
+               <div className="w-full flex-1 flex flex-col items-center w-full" onMouseLeave={() => setActiveIndex(0)}>
+                 <div className="h-56 sm:h-80 w-full min-w-[200px] flex-shrink-0">
                    <ResponsiveContainer width="100%" height="100%">
                      <PieChart>
                        <Pie
@@ -257,14 +259,29 @@ export function Analytics() {
                          paddingAngle={4}
                          dataKey="value"
                          onMouseEnter={(_, index) => setActiveIndex(index)}
-                         onClick={(data) => {
-                            if (!selectedCategory && data && data.name) {
-                               setSelectedCategory(data.name);
+                         onMouseLeave={() => {}}
+                         onClick={(data, index) => {
+                            const catName = pieData[index]?.name;
+                            if (!selectedCategory && catName) {
+                               setSelectedCategory(catName);
                                setActiveIndex(0);
+                            } else if (typeof index === 'number') {
+                               setActiveIndex(index);
+                            }
+                         }}
+                         onTouchStart={(data, index) => {
+                            const catName = pieData[index]?.name;
+                            if (!selectedCategory && catName) {
+                               setSelectedCategory(catName);
+                               setActiveIndex(0);
+                            } else if (typeof index === 'number') {
+                               setActiveIndex(index);
                             }
                          }}
                          className={!selectedCategory ? "cursor-pointer focus:outline-none" : "focus:outline-none"}
+                         style={{ outline: "none" }}
                          stroke="none"
+                         isAnimationActive={false}
                        >
                          {pieData.map((entry, index) => (
                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -274,19 +291,37 @@ export function Analytics() {
                    </ResponsiveContainer>
                  </div>
                  
-                 <div className="w-full grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 px-2">
+                 <div className="w-full grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 px-2 pb-2">
                     {pieData.slice(0, 6).map((entry, index) => (
                        <div 
                          key={entry.name} 
                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${activeIndex === index ? 'bg-slate-100 dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                          onMouseEnter={() => setActiveIndex(index)}
+                         onClick={() => {
+                            if (!selectedCategory && entry.name) {
+                               setSelectedCategory(entry.name);
+                               setActiveIndex(0);
+                            } else {
+                               setActiveIndex(index);
+                            }
+                         }}
+                         onTouchStart={(e) => {
+                            // prevent onMouseEnter from double firing on touch
+                            e.stopPropagation();
+                            if (!selectedCategory && entry.name) {
+                               setSelectedCategory(entry.name);
+                               setActiveIndex(0);
+                            } else {
+                               setActiveIndex(index);
+                            }
+                         }}
                        >
                           <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
                           <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{entry.name}</span>
                        </div>
                     ))}
                  </div>
-               </>
+               </div>
             )}
           </CardContent>
         </Card>
