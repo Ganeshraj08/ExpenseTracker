@@ -2,15 +2,19 @@ import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { formatCurrency, formatDate, downloadCSV } from "../utils/helpers";
-import { DollarSign, Trash2, Download, Pencil, Filter, Calendar } from "lucide-react";
+import { IndianRupee, Trash2, Download, Pencil, Filter, Calendar } from "lucide-react";
 import { useExpenses } from "../context/ExpenseContext";
 import { useAuth } from "../hooks/useAuth";
 import { Modal } from "../components/ui/Modal";
 import { ExpenseForm } from "../components/expenses/ExpenseForm";
+import { useToast } from "../context/ToastContext";
+import { useModal } from "../context/ModalContext";
 
 export function Transactions() {
   const { expenses, loading, deleteExpense, updateExpense } = useExpenses();
   const { user } = useAuth();
+  const { addToast } = useToast();
+  const { confirm } = useModal();
   const [selectedParent, setSelectedParent] = useState("All Categories");
   const [selectedChild, setSelectedChild] = useState("All Subcategories");
   const [selectedTimeframe, setSelectedTimeframe] = useState("all");
@@ -75,8 +79,9 @@ export function Transactions() {
     try {
        await updateExpense(editingData.id, updatedData);
        setEditingData(null);
+       addToast("Transaction updated successfully", "success");
     } catch (e) {
-       alert("Failed to update transaction.");
+       addToast("Failed to update transaction.", "error");
     }
   };
 
@@ -143,7 +148,7 @@ export function Transactions() {
                 <div key={tx.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors gap-4 group">
                   <div className="flex gap-4 items-center">
                     <div className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${tx.type === 'expense' ? 'bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400' : 'bg-green-50 dark:bg-green-500/10 text-green-500 dark:text-green-400'}`}>
-                      <DollarSign className="w-6 h-6" />
+                      <IndianRupee className="w-6 h-6" />
                     </div>
                     <div>
                       <p className="font-semibold text-slate-900 dark:text-slate-100">{tx.description}</p>
@@ -162,9 +167,20 @@ export function Transactions() {
                        <Pencil className="w-5 h-5" />
                     </button>
                     <button 
-                       onClick={() => {
-                          if (window.confirm("Are you sure you want to delete this transaction?")) {
-                             deleteExpense(tx.id);
+                       onClick={async () => {
+                          const isConfirmed = await confirm({
+                             title: "Delete Transaction",
+                             message: "Are you sure you want to delete this transaction?",
+                             confirmText: "Delete",
+                             confirmVariant: "danger"
+                          });
+                          if (isConfirmed) {
+                             try {
+                                await deleteExpense(tx.id);
+                                addToast("Transaction deleted", "success");
+                             } catch(err) {
+                                addToast("Failed to delete transaction", "error");
+                             }
                           }
                        }}
                        className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all active:scale-95"

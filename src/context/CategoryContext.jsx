@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useAuth } from "../hooks/useAuth";
 
@@ -34,23 +34,84 @@ export function CategoryProvider({ children }) {
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      let data = snapshot.docs.map(doc => ({
+      const fetchedData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })).sort((a, b) => a.name.localeCompare(b.name));
+      }));
+
+      // Auto-Heal: Clean up historical duplicate categories from memory and Firestore
+      const nameMap = new Map();
+      const duplicatesToDelete = [];
+      const docsToUpdate = new Map();
+
+      fetchedData.forEach((cat) => {
+         const name = (cat.name || "").trim().toLowerCase();
+         if (nameMap.has(name)) {
+            const existingCat = nameMap.get(name);
+            // keep the one with more subcategories
+            const existingSubs = existingCat.subcategories || [];
+            const currentSubs = cat.subcategories || [];
+            
+            if (currentSubs.length > existingSubs.length) {
+               duplicatesToDelete.push(existingCat.id);
+               nameMap.set(name, cat);
+               
+               // we kept cat, check if we need to merge existingSubs into it
+               const merged = Array.from(new Set([...currentSubs, ...existingSubs]));
+               if (merged.length > currentSubs.length) {
+                  cat.subcategories = merged;
+                  docsToUpdate.set(cat.id, merged);
+               }
+            } else {
+               duplicatesToDelete.push(cat.id);
+               // we kept existingCat, check if we need to merge currentSubs into it
+               const merged = Array.from(new Set([...existingSubs, ...currentSubs]));
+               if (merged.length > existingSubs.length) {
+                  existingCat.subcategories = merged;
+                  docsToUpdate.set(existingCat.id, merged);
+               }
+            }
+         } else {
+            nameMap.set(name, cat);
+         }
+      });
+
+      if (duplicatesToDelete.length > 0) {
+         try {
+            const batch = writeBatch(db);
+            duplicatesToDelete.forEach(id => {
+               batch.delete(doc(db, "categories", id));
+            });
+            docsToUpdate.forEach((mergedSubs, parentId) => {
+               batch.update(doc(db, "categories", parentId), { subcategories: mergedSubs });
+            });
+            await batch.commit();
+         } catch (err) {
+            console.error("Auto-heal failed:", err);
+         }
+      }
+
+      let data = Array.from(nameMap.values()).sort((a, b) => a.name.localeCompare(b.name));
       
       // If user has absolutely no categories, seed them
       if (data.length === 0 && !snapshot.metadata.hasPendingWrites) {
-         try {
-           for (const cat of DEFAULT_CATEGORIES) {
-              await addDoc(collection(db, "categories"), {
-                ...cat,
-                userId: user.uid,
-                createdAt: new Date().toISOString()
-              });
-           }
-         } catch (error) {
-           console.error("Error seeding default categories:", error);
+         if (!window.hasSeededCategories) {
+            window.hasSeededCategories = true;
+            try {
+               const batch = writeBatch(db);
+               for (const cat of DEFAULT_CATEGORIES) {
+                  const newDocRef = doc(collection(db, "categories"));
+                  batch.set(newDocRef, {
+                     ...cat,
+                     userId: user.uid,
+                     createdAt: new Date().toISOString()
+                  });
+               }
+               await batch.commit();
+            } catch (error) {
+               console.error("Error seeding default categories:", error);
+               window.hasSeededCategories = false;
+            }
          }
       } else {
          setCategories(data);

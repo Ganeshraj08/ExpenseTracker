@@ -5,18 +5,22 @@ import { Modal } from "../ui/Modal";
 import { ExpenseForm } from "../expenses/ExpenseForm";
 import { useExpenses } from "../../context/ExpenseContext";
 import { useAuth } from "../../hooks/useAuth";
+import { useToast } from "../../context/ToastContext";
 
 export function Navbar({ onMobileMenuClick }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { addExpense } = useExpenses();
   const { user } = useAuth();
+  const { addToast } = useToast();
+
+  
 
   const handleAddExpense = async (data) => {
     try {
       await addExpense(data);
       setIsModalOpen(false);
     } catch (error) {
-      alert("Failed to add expense. Check console for details.");
+      addToast("Failed to add expense. Check console for details.", "error");
     }
   };
 

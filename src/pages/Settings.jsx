@@ -5,6 +5,8 @@ import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../context/ThemeContext";
 import { useExpenses } from "../context/ExpenseContext";
 import { useCategories } from "../context/CategoryContext";
+import { useToast } from "../context/ToastContext";
+import { useModal } from "../context/ModalContext";
 import { downloadCSV } from "../utils/helpers";
 import { Download, AlertTriangle, Pencil, Tags, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 
@@ -13,18 +15,26 @@ export function Settings() {
   const { theme, setTheme } = useTheme();
   const { expenses, clearAllData, batchUpdateParentCategory, batchUpdateSubcategory } = useExpenses();
   const { categories, addParentCategory, updateParentCategory, deleteParentCategory, addSubcategory, updateSubcategory, deleteSubcategory } = useCategories();
+  const { addToast } = useToast();
+  const { confirm, prompt } = useModal();
   
   const [isClearing, setIsClearing] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
 
   const handleClearData = async () => {
-     if (window.confirm("DANGER: Are you completely sure you want to permanently delete ALL your transactions? This cannot be undone.")) {
+     const isConfirmed = await confirm({
+        title: "Danger Zone",
+        message: "Are you completely sure you want to permanently delete ALL your transactions? This cannot be undone.",
+        confirmText: "Delete All Data",
+        confirmVariant: "danger"
+     });
+     if (isConfirmed) {
         setIsClearing(true);
         try {
            await clearAllData();
-           alert("Your data has been successfully reset to default.");
+           addToast("Your data has been successfully reset to default.", "success");
         } catch (e) {
-           alert("Failed to clear data.");
+           addToast("Failed to clear data.", "error");
         } finally {
            setIsClearing(false);
         }
@@ -36,48 +46,114 @@ export function Settings() {
   };
 
   const handleAddParent = async () => {
-     const name = window.prompt("New Category Name:");
+     const name = await prompt({
+        title: "Add Category",
+        label: "New Category Name:"
+     });
      if (name && name.trim()) {
-        await addParentCategory(name);
+        try {
+           await addParentCategory(name);
+           addToast(`Category "${name}" added`, "success");
+        } catch (e) {
+           addToast("Failed to add category", "error");
+        }
      }
   };
 
   const handleEditParent = async (cat) => {
-     const newName = window.prompt(`Rename "${cat.name}" to:`, cat.name);
+     const newName = await prompt({
+        title: "Rename Category",
+        label: `Rename "${cat.name}" to:`,
+        defaultValue: cat.name,
+        confirmText: "Rename"
+     });
      if (newName && newName.trim() && newName.trim() !== cat.name) {
-        if (window.confirm(`Rename ${cat.name} to ${newName}? This will update all historical expenses.`)) {
-           await updateParentCategory(cat.id, newName.trim());
-           await batchUpdateParentCategory(cat.name, newName.trim());
+        const isConfirmed = await confirm({
+           title: "Rename Category",
+           message: `Rename ${cat.name} to ${newName}? This will update all historical expenses.`
+        });
+        if (isConfirmed) {
+           try {
+              await updateParentCategory(cat.id, newName.trim());
+              await batchUpdateParentCategory(cat.name, newName.trim());
+              addToast(`Category renamed to "${newName.trim()}"`, "success");
+           } catch (e) {
+              addToast("Failed to rename category", "error");
+           }
         }
      }
   };
 
   const handleDeleteParent = async (cat) => {
-     if (window.confirm(`Delete "${cat.name}"? Historical expenses will be kept but considered 'Uncategorized' if you edit them later.`)) {
-        await deleteParentCategory(cat.id);
+     const isConfirmed = await confirm({
+        title: "Delete Category",
+        message: `Delete "${cat.name}"? Historical expenses will be kept but considered 'Uncategorized' if you edit them later.`,
+        confirmText: "Delete",
+        confirmVariant: "danger"
+     });
+     if (isConfirmed) {
+        try {
+           await deleteParentCategory(cat.id);
+           addToast(`Category "${cat.name}" deleted`, "success");
+        } catch (e) {
+           addToast("Failed to delete category", "error");
+        }
      }
   };
 
   const handleAddSub = async (cat) => {
-     const name = window.prompt(`New Subcategory for ${cat.name}:`);
+     const name = await prompt({
+        title: "Add Subcategory",
+        label: `New Subcategory for ${cat.name}:`
+     });
      if (name && name.trim()) {
-        await addSubcategory(cat.id, name);
+        try {
+           await addSubcategory(cat.id, name);
+           addToast(`Subcategory "${name}" added`, "success");
+        } catch (e) {
+           addToast("Failed to add subcategory", "error");
+        }
      }
   };
 
   const handleEditSub = async (cat, oldSub) => {
-     const newName = window.prompt(`Rename "${oldSub}" to:`, oldSub);
+     const newName = await prompt({
+        title: "Rename Subcategory",
+        label: `Rename "${oldSub}" to:`,
+        defaultValue: oldSub,
+        confirmText: "Rename"
+     });
      if (newName && newName.trim() && newName.trim() !== oldSub) {
-        if (window.confirm(`Rename '${oldSub}' to '${newName}'? This will update all corresponding historical expenses under ${cat.name}.`)) {
-           await updateSubcategory(cat.id, oldSub, newName.trim());
-           await batchUpdateSubcategory(cat.name, oldSub, newName.trim());
+        const isConfirmed = await confirm({
+           title: "Rename Subcategory",
+           message: `Rename '${oldSub}' to '${newName}'? This will update all corresponding historical expenses under ${cat.name}.`
+        });
+        if (isConfirmed) {
+           try {
+              await updateSubcategory(cat.id, oldSub, newName.trim());
+              await batchUpdateSubcategory(cat.name, oldSub, newName.trim());
+              addToast(`Subcategory renamed to "${newName.trim()}"`, "success");
+           } catch (e) {
+              addToast("Failed to rename subcategory", "error");
+           }
         }
      }
   };
 
   const handleDeleteSub = async (cat, sub) => {
-     if (window.confirm(`Delete subcategory "${sub}" from ${cat.name}?`)) {
-        await deleteSubcategory(cat.id, sub);
+     const isConfirmed = await confirm({
+        title: "Delete Subcategory",
+        message: `Delete subcategory "${sub}" from ${cat.name}?`,
+        confirmText: "Delete",
+        confirmVariant: "danger"
+     });
+     if (isConfirmed) {
+        try {
+           await deleteSubcategory(cat.id, sub);
+           addToast(`Subcategory "${sub}" deleted`, "success");
+        } catch (e) {
+           addToast("Failed to delete subcategory", "error");
+        }
      }
   };
 

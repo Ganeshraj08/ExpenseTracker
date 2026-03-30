@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from "../components/ui/Card";
 import { formatCurrency, formatDate } from "../utils/helpers";
-import { ArrowUpRight, ArrowDownRight, DollarSign, Wallet } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, IndianRupee, Wallet } from "lucide-react";
 import { useExpenses } from "../context/ExpenseContext";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -218,7 +218,7 @@ export function Dashboard() {
                       <div
                         className={`shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${tx.type === "expense" ? "bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400" : "bg-green-50 dark:bg-green-500/10 text-green-500 dark:text-green-400"}`}
                       >
-                        <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                       <div>
                         <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[120px] sm:max-w-[200px]">

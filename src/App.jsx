@@ -8,11 +8,15 @@ import { AuthProvider } from "./context/AuthContext";
 import { ExpenseProvider } from "./context/ExpenseContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { CategoryProvider } from "./context/CategoryContext";
+import { ToastProvider } from "./context/ToastContext";
+import { ModalProvider } from "./context/ModalContext";
 
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
+      <ToastProvider>
+        <ModalProvider>
+          <AuthProvider>
         <CategoryProvider>
           <ExpenseProvider>
             <BrowserRouter>
@@ -28,6 +32,8 @@ function App() {
           </ExpenseProvider>
         </CategoryProvider>
       </AuthProvider>
+      </ModalProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }
