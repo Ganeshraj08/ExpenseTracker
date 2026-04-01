@@ -5,16 +5,18 @@ import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../context/ThemeContext";
 import { useExpenses } from "../context/ExpenseContext";
 import { useCategories } from "../context/CategoryContext";
+import { useRecurringExpenses } from "../context/RecurringExpenseContext";
 import { useToast } from "../context/ToastContext";
 import { useModal } from "../context/ModalContext";
 import { downloadCSV } from "../utils/helpers";
-import { Download, AlertTriangle, Pencil, Tags, Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Download, AlertTriangle, Pencil, Tags, Plus, Trash2, ChevronDown, ChevronRight, Repeat } from "lucide-react";
 
 export function Settings() {
    const { user, loginWithGoogle, logout } = useAuth();
    const { theme, setTheme } = useTheme();
    const { expenses, clearAllData, batchUpdateParentCategory, batchUpdateSubcategory } = useExpenses();
    const { categories, addParentCategory, updateParentCategory, deleteParentCategory, addSubcategory, updateSubcategory, deleteSubcategory } = useCategories();
+   const { recurringExpenses, deleteRecurringExpense } = useRecurringExpenses();
    const { addToast } = useToast();
    const { confirm, prompt } = useModal();
 
@@ -157,6 +159,23 @@ export function Settings() {
       }
    };
 
+   const handleDeleteRecurring = async (expense) => {
+      const isConfirmed = await confirm({
+         title: "Delete Recurring Transaction",
+         message: `Are you sure you want to stop the recurring transaction "${expense.description}"? This won't affect past executions.`,
+         confirmText: "Delete",
+         confirmVariant: "danger"
+      });
+      if (isConfirmed) {
+         try {
+            await deleteRecurringExpense(expense.id);
+            addToast("Recurring transaction deleted", "success");
+         } catch (e) {
+            addToast("Failed to delete recurring transaction", "error");
+         }
+      }
+   };
+
    return (
       <div className="space-y-6 max-w-3xl">
          <h2 className="text-2xl font-bold dark:text-white">Settings</h2>
@@ -278,6 +297,7 @@ export function Settings() {
                      </div>
                   </CardContent>
                </Card>
+
 
                <Card className="border-red-200 dark:border-red-900/50">
                   <CardHeader>

@@ -3,6 +3,7 @@ import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { useCategories } from "../../context/CategoryContext";
 import { useExpenses } from "../../context/ExpenseContext";
+import { useRecurringExpenses } from "../../context/RecurringExpenseContext";
 import { useToast } from "../../context/ToastContext";
 import { Mic, Sparkles, Loader2 } from "lucide-react";
 import { parseTransactionNLP } from "../../services/gemini";
@@ -45,6 +46,7 @@ function SearchableInput({
 export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
   const { categories, addParentCategory, addSubcategory } = useCategories();
   const { addExpense } = useExpenses();
+  const { addRecurringExpense } = useRecurringExpenses();
   const { addToast } = useToast();
 
   const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
@@ -65,6 +67,13 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
   const [isListening, setIsListening] = useState(false);
   const [nlpText, setNlpText] = useState("");
   const [pendingTransactions, setPendingTransactions] = useState([]);
+  const [bundleTitle, setBundleTitle] = useState("");
+  const [groupBundle, setGroupBundle] = useState(false);
+
+  // Recurring state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState("Monthly");
+  const [time, setTime] = useState("");
 
   //   useEffect(() => {
   //      if (!initialData?.category && categories.length > 0 && !parentCategory) {
@@ -116,6 +125,12 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
           setParentCategory(data.category.trim());
           setSubCategory("");
         }
+        
+        if (data.isRecurring) {
+            setIsRecurring(true);
+            if (data.frequency) setFrequency(data.frequency);
+        }
+        
         setNlpText(""); // Clear after success
       } else if (dataArray.length > 1) {
         setPendingTransactions(dataArray);
@@ -214,6 +229,22 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
         type,
         date: initialData?.date || new Date().toISOString(),
       });
+
+      if (isRecurring && !initialData) {
+         await addRecurringExpense({
+            title: description || "Routine",
+            frequency,
+            time,
+            lastExecuted: new Date().toLocaleDateString('en-CA'), // skip today
+            transactions: [{
+               amount: parseFloat(amount),
+               description: description || "Routine Item",
+               category: finalCategory,
+               type,
+            }]
+         });
+         addToast("Recurring scheduled!", "success");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -226,6 +257,9 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
     let addedCount = 0;
     const sessionAddedParents = new Map();
     const sessionAddedSubs = new Map();
+    
+    // To group bundled routines
+    const recurringItemsByFreq = {};
 
     try {
       for (const item of pendingTransactions) {
@@ -291,8 +325,49 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
           type: item.type?.toLowerCase() === "income" ? "income" : "expense",
           date: item.date || new Date().toISOString(),
         });
+        
+        if (item.isRecurring) {
+            if (groupBundle) {
+               const freq = item.frequency || "Monthly";
+               if (!recurringItemsByFreq[freq]) recurringItemsByFreq[freq] = [];
+               recurringItemsByFreq[freq].push({
+                  amount: parseFloat(item.amount),
+                  description: item.description || "Routine Item",
+                  category: finalCategory,
+                  type: item.type?.toLowerCase() === "income" ? "income" : "expense",
+               });
+            } else {
+               // Save instantly as standalone routine
+               await addRecurringExpense({
+                  title: item.description || "Routine",
+                  frequency: item.frequency || "Monthly",
+                  time: "",
+                  lastExecuted: new Date().toLocaleDateString('en-CA'),
+                  transactions: [{
+                     amount: parseFloat(item.amount),
+                     description: item.description || "Routine Item",
+                     category: finalCategory,
+                     type: item.type?.toLowerCase() === "income" ? "income" : "expense",
+                  }]
+               });
+            }
+        }
         addedCount++;
       }
+      
+      // Save generating routines silently if bundled
+      if (groupBundle) {
+         for (const [freq, txs] of Object.entries(recurringItemsByFreq)) {
+            await addRecurringExpense({
+               title: bundleTitle.trim() ? bundleTitle : `AI Generated ${freq} Routine`,
+               frequency: freq,
+               time: "",
+               lastExecuted: new Date().toLocaleDateString('en-CA'),
+               transactions: txs
+            });
+         }
+      }
+
       addToast(`Successfully saved ${addedCount} transactions!`, "success");
       if (onCancel) onCancel();
     } catch (err) {
@@ -340,6 +415,35 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
                 <p className="text-xs text-slate-500 truncate">
                   {tx.category || "Uncategorized"}
                 </p>
+                
+                <div className="flex items-center gap-3 mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
+                   <label className="flex items-center gap-1.5 cursor-pointer group">
+                      <input 
+                         type="checkbox" 
+                         checked={tx.isRecurring || false} 
+                         onChange={(e) => {
+                            setPendingTransactions(prev => prev.map((p, i) => i === idx ? { ...p, isRecurring: e.target.checked, frequency: p.frequency || 'Monthly' } : p));
+                         }}
+                         className="rounded text-blue-600 focus:ring-blue-500 bg-slate-100 border-slate-300 dark:bg-slate-800 dark:border-slate-600 transition-shadow"
+                      />
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Recurring</span>
+                   </label>
+                   
+                   {tx.isRecurring && (
+                      <select 
+                         value={tx.frequency || "Monthly"}
+                         onChange={(e) => {
+                            setPendingTransactions(prev => prev.map((p, i) => i === idx ? { ...p, frequency: e.target.value } : p));
+                         }}
+                         className="rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-1.5 py-0.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-shadow"
+                      >
+                         <option value="Daily">Daily</option>
+                         <option value="Weekdays">Weekdays</option>
+                         <option value="Weekly">Weekly</option>
+                         <option value="Monthly">Monthly</option>
+                      </select>
+                   )}
+                </div>
               </div>
               <button
                 onClick={() =>
@@ -360,6 +464,42 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
             </p>
           )}
         </div>
+        
+        {pendingTransactions.some(tx => tx.isRecurring) && (
+           <div className="bg-white dark:bg-slate-900 p-4 mt-4 rounded-lg border border-slate-200 dark:border-slate-700 w-full animate-in fade-in slide-in-from-bottom-2">
+              <label className="flex items-start gap-2.5 cursor-pointer mb-2">
+                 <input
+                    type="checkbox"
+                    checked={groupBundle}
+                    onChange={(e) => setGroupBundle(e.target.checked)}
+                    className="mt-1 rounded text-blue-600 focus:ring-blue-500 bg-slate-100 border-slate-300 dark:bg-slate-800 dark:border-slate-600"
+                 />
+                 <div>
+                    <span className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
+                       Group into a single Routine bundle
+                    </span>
+                    <span className="block text-xs text-slate-500 mt-0.5">
+                       Check this if all items belong to one event (like "Office Commute"). Uncheck to create separate routines for each item.
+                    </span>
+                 </div>
+              </label>
+
+              {groupBundle && (
+                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 mt-2">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 focus-within:text-blue-600 transition-colors">
+                       Bundle Title (Optional)
+                    </label>
+                    <input
+                       type="text"
+                       value={bundleTitle}
+                       onChange={e => setBundleTitle(e.target.value)}
+                       placeholder="e.g. Office Commute"
+                       className="w-full rounded-md border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                    />
+                 </div>
+              )}
+           </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-6">
           <Button
@@ -524,6 +664,44 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
             options={selectedParentData?.subcategories || []}
           />
         </div>
+
+        {!initialData && (
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                className="rounded text-blue-600 focus:ring-blue-500 bg-slate-100 border-slate-300 dark:bg-slate-800 dark:border-slate-600"
+              />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Make this a recurring transaction</span>
+            </label>
+            
+            {isRecurring && (
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-1">
+                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Frequency</label>
+                     <select 
+                        value={frequency} 
+                        onChange={(e) => setFrequency(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     >
+                        <option value="Daily">Daily</option>
+                        <option value="Weekdays">Weekdays (Mon-Fri)</option>
+                        <option value="Weekly">Weekly</option>
+                        <option value="Monthly">Monthly</option>
+                     </select>
+                  </div>
+                  <Input 
+                     label="Time (Optional)" 
+                     type="time" 
+                     value={time} 
+                     onChange={(e) => setTime(e.target.value)} 
+                  />
+               </div>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-6">
           <Button

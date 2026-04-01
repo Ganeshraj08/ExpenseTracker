@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Navbar } from "./Navbar";
+import { RecurringManager } from "../routines/RecurringManager";
 
 export function DashboardLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
+      <RecurringManager />
       <Sidebar 
         isMobileOpen={isMobileMenuOpen} 
         onClose={() => setIsMobileMenuOpen(false)} 

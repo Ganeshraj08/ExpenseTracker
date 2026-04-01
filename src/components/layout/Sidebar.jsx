@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ReceiptText, PieChart, Settings, X } from "lucide-react";
+import { LayoutDashboard, ReceiptText, PieChart, Settings, X, Repeat } from "lucide-react";
 import { cn } from "../../utils/helpers";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Transactions", href: "/transactions", icon: ReceiptText },
   { label: "Analytics", href: "/analytics", icon: PieChart },
+  { label: "Routines", href: "/routines", icon: Repeat },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

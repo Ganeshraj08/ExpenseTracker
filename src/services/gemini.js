@@ -31,6 +31,8 @@ Instructions:
 5. Determine the best matching category from the user's existing list. Output ONLY the perfectly matched parent and subcategory separated by a colon (e.g., "Food: Groceries").
    If no existing category matches, invent a broad parent and specific subcategory (e.g., "Hobbies: Crafting").
 6. Provide a valid ISO 8601 date string for the transaction in "date", using exactly "${currentDate}" if no specific date is mentioned.
+7. Determine if the user indicates this transaction is repeating/recurring (e.g. "daily", "every week", "monthly", "each morning"). Set a boolean "isRecurring".
+8. If "isRecurring" is true, determine the strictly allowed "frequency". Choose ONLY from: "Daily", "Weekdays", "Weekly", "Monthly".
 
 Response MUST be a raw JSON array string ONLY, do not wrap it in markdown or backticks.
 Example output:
@@ -40,7 +42,9 @@ Example output:
     "description": "Starbucks Coffee",
     "type": "expense",
     "category": "Food: Coffee/Snacks",
-    "date": "${currentDate}"
+    "date": "${currentDate}",
+    "isRecurring": true,
+    "frequency": "Daily"
   }
 ]
 `;
