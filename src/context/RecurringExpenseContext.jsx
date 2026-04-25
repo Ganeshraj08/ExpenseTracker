@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, deleteDoc, doc, getDocs, writeBatch, updateDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useAuth } from "../hooks/useAuth";
 
@@ -70,13 +70,30 @@ export function RecurringExpenseProvider({ children }) {
     }
   };
 
+  const clearAllRecurringExpenses = async () => {
+    if (!user) return;
+    try {
+      const q = query(collection(db, "recurring_expenses"), where("userId", "==", user.uid));
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      querySnapshot.forEach((document) => {
+        batch.delete(document.ref);
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Error clearing recurring expenses:", error);
+      throw error;
+    }
+  };
+
   return (
     <RecurringExpenseContext.Provider value={{ 
       recurringExpenses, 
       loading, 
       addRecurringExpense, 
       updateRecurringExpense, 
-      deleteRecurringExpense 
+      deleteRecurringExpense,
+      clearAllRecurringExpenses
     }}>
       {children}
     </RecurringExpenseContext.Provider>

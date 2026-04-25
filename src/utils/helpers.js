@@ -16,14 +16,22 @@ export function downloadCSV(data, filename = 'varavuselavu_export.csv') {
   if (!data || !data.length) return;
   
   const headers = ['Date', 'Description', 'Category', 'Type', 'Amount', 'Currency'];
-  const rows = data.map(tx => [
-     new Date(tx.date).toLocaleDateString(),
-     `"${tx.description.replace(/"/g, '""')}"`,
-     tx.category,
-     tx.type,
-     tx.amount,
-     'INR'
-  ]);
+  const rows = data.map(tx => {
+     const d = new Date(tx.date);
+     const yy = d.getFullYear();
+     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+     const mmm = months[d.getMonth()];
+     const dd = String(d.getDate()).padStart(2, '0');
+     const dateStr = `${dd}-${mmm}-${yy}`;
+     return [
+       dateStr,
+       `"${tx.description.replace(/"/g, '""')}"`,
+       `"${tx.category || "Uncategorized"}"`,
+       tx.type,
+       tx.amount,
+       'INR'
+     ];
+  });
   
   const csvContent = [
      headers.join(','),

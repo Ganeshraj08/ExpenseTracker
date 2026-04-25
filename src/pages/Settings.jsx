@@ -16,7 +16,7 @@ export function Settings() {
    const { theme, setTheme } = useTheme();
    const { expenses, clearAllData, batchUpdateParentCategory, batchUpdateSubcategory } = useExpenses();
    const { categories, addParentCategory, updateParentCategory, deleteParentCategory, addSubcategory, updateSubcategory, deleteSubcategory } = useCategories();
-   const { recurringExpenses, deleteRecurringExpense } = useRecurringExpenses();
+   const { recurringExpenses, deleteRecurringExpense, clearAllRecurringExpenses } = useRecurringExpenses();
    const { addToast } = useToast();
    const { confirm, prompt } = useModal();
 
@@ -34,6 +34,7 @@ export function Settings() {
          setIsClearing(true);
          try {
             await clearAllData();
+            await clearAllRecurringExpenses();
             addToast("Your data has been successfully reset to default.", "success");
          } catch (e) {
             addToast("Failed to clear data.", "error");

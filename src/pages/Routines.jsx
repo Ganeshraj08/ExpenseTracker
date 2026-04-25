@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRecurringExpenses } from "../context/RecurringExpenseContext";
 import { useExpenses } from "../context/ExpenseContext";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/Card";
@@ -8,7 +8,7 @@ import { Modal } from "../components/ui/Modal";
 import { useModal } from "../context/ModalContext";
 import { useCategories } from "../context/CategoryContext";
 import { useToast } from "../context/ToastContext";
-import { Repeat, Plus, Trash2, Pencil, Calendar, Clock, CheckCircle, AlertCircle, Mic, Sparkles, Loader2 } from "lucide-react";
+import { Repeat, Plus, Trash2, Pencil, Calendar, Clock, CheckCircle, AlertCircle, Mic, Sparkles, Loader2, ChevronDown } from "lucide-react";
 import { parseTransactionNLP } from "../services/gemini";
 
 // Shared autocomplete input for categories
@@ -36,12 +36,23 @@ export function Routines() {
    const { recurringExpenses, addRecurringExpense, updateRecurringExpense, deleteRecurringExpense } = useRecurringExpenses();
    const { addExpense } = useExpenses();
    const { categories, addParentCategory, addSubcategory } = useCategories();
+
+   const validCategories = useMemo(() => {
+      const flat = [];
+      categories.forEach(c => {
+         flat.push(c.name);
+         if (c.subcategories) c.subcategories.forEach(s => flat.push(`${c.name}: ${s}`));
+      });
+      return flat;
+   }, [categories]);
+
    const { addToast } = useToast();
    const { confirm } = useModal();
    
    const [isModalOpen, setIsModalOpen] = useState(false);
    const [isSubmitting, setIsSubmitting] = useState(false);
    const [editingRoutine, setEditingRoutine] = useState(null);
+   const [loggingRoutine, setLoggingRoutine] = useState(null);
 
    const [title, setTitle] = useState("");
    const [frequency, setFrequency] = useState("Monthly");
@@ -250,38 +261,38 @@ export function Routines() {
       }
    };
 
-   const handleLogNow = async (routine) => {
+   const handleOpenLogModal = (routine) => {
       const txs = routine.transactions || [{
            amount: routine.amount,
            description: routine.description,
            category: routine.category,
-           type: routine.type
+           type: routine.type,
+           id: Math.random()
       }];
-      
-      const totalAmount = txs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-      const isConfirmed = await confirm({
-         title: "Log Routine manually",
-         message: `Are you sure you want to log "${routine.title || routine.description}" right now? This will log ₹${totalAmount.toFixed(2)} to your ledger.`,
-         confirmText: "Log Now",
-      });
-      
-      if (isConfirmed) {
-         try {
-            for (const t of txs) {
-               await addExpense({
-                  amount: parseFloat(t.amount),
-                  category: t.category || "Uncategorized",
-                  description: t.description || 'Routine Item',
-                  type: t.type || 'expense',
-                  date: new Date().toISOString()
-               });
-            }
-            const todayString = new Date().toLocaleDateString('en-CA');
-            await updateRecurringExpense(routine.id, { lastExecuted: todayString });
-            addToast("Routine logged successfully", "success");
-         } catch(error) {
-            addToast("Failed to log routine manually", "error");
+      setLoggingRoutine({ ...routine, txs: JSON.parse(JSON.stringify(txs)) });
+   };
+
+   const handleCustomLog = async (e) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      try {
+         for (const t of loggingRoutine.txs) {
+            await addExpense({
+               amount: parseFloat(t.amount),
+               category: t.category || "Uncategorized",
+               description: t.description || 'Routine Item',
+               type: t.type || 'expense',
+               date: new Date().toISOString()
+            });
          }
+         const todayString = new Date().toLocaleDateString('en-CA');
+         await updateRecurringExpense(loggingRoutine.id, { lastExecuted: todayString });
+         addToast("Routine logged successfully", "success");
+         setLoggingRoutine(null);
+      } catch(error) {
+         addToast("Failed to log routine explicitly", "error");
+      } finally {
+         setIsSubmitting(false);
       }
    };
 
@@ -330,7 +341,9 @@ export function Routines() {
                            <div className="flex justify-between items-start mb-4 gap-2">
                               <div className="min-w-0">
                                  <h3 className="font-semibold text-slate-900 dark:text-white truncate" title={routine.title || routine.description}>{routine.title || routine.description}</h3>
-                                 <p className="text-xs text-slate-500 truncate">{txs.length} item(s)</p>
+                                 <div className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                    {txs.map(t => `${t.description} (₹${Number(t.amount).toFixed(2)})`).join(', ')}
+                                 </div>
                               </div>
                               <div className="font-bold text-lg shrink-0 text-slate-900 dark:text-white">
                                  ₹{total.toFixed(2)}
@@ -357,13 +370,13 @@ export function Routines() {
                                  </div>
                               ) : isSkippedToday ? (
                                  <div className="group relative">
-                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 dark:text-orange-500 uppercase tracking-wider bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-md cursor-pointer hover:bg-orange-100 transition-colors" onClick={() => handleLogNow(routine)}>
+                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 dark:text-orange-500 uppercase tracking-wider bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-md cursor-pointer hover:bg-orange-100 transition-colors" onClick={() => handleOpenLogModal(routine)}>
                                        <AlertCircle className="w-3.5 h-3.5" /> Skipped
                                     </div>
                                     <div className="absolute outline-none text-[10px] invisible group-hover:visible left-0 -top-6 bg-slate-800 text-white px-2 py-1 rounded z-10 whitespace-nowrap">Click to force log</div>
                                  </div>
                               ) : (
-                                 <Button variant="outline" size="sm" onClick={() => handleLogNow(routine)} className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 dark:border-indigo-900/50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 h-8 px-3 transition-colors text-xs font-semibold uppercase tracking-wider">
+                                 <Button variant="outline" size="sm" onClick={() => handleOpenLogModal(routine)} className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 dark:border-indigo-900/50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 h-8 px-3 transition-colors text-xs font-semibold uppercase tracking-wider">
                                     Log Now
                                  </Button>
                               )}
@@ -442,12 +455,15 @@ export function Routines() {
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Frequency</label>
-                     <select value={frequency} onChange={(e) => setFrequency(e.target.value)} className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="Daily">Daily</option>
-                        <option value="Weekdays">Weekdays (Mon-Fri)</option>
-                        <option value="Weekly">Weekly</option>
-                        <option value="Monthly">Monthly</option>
-                     </select>
+                     <div className="relative">
+                       <select value={frequency} onChange={(e) => setFrequency(e.target.value)} className="appearance-none w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 pr-8 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                          <option value="Daily">Daily</option>
+                          <option value="Weekdays">Weekdays (Mon-Fri)</option>
+                          <option value="Weekly">Weekly</option>
+                          <option value="Monthly">Monthly</option>
+                       </select>
+                       <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                     </div>
                   </div>
                   <Input label="Time (Optional)" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
                </div>
@@ -522,10 +538,99 @@ export function Routines() {
 
                <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
                   <Button variant="ghost" type="button" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancel</Button>
-                  <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : editingRoutine ? "Update Routine" : "Create Routine"}</Button>
-               </div>
-            </form>
-         </Modal>
-      </div>
-   );
-}
+                   <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : editingRoutine ? "Update Routine" : "Create Routine"}</Button>
+                </div>
+             </form>
+          </Modal>
+
+          <Modal isOpen={!!loggingRoutine} onClose={() => setLoggingRoutine(null)} title="Customize & Log Routine">
+             {loggingRoutine && (
+                <form onSubmit={handleCustomLog} className="space-y-4">
+                   <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Tweak the values for this specific run if needed. This doesn't change the underlying routine settings.
+                   </p>
+                   
+                   <div className="max-h-60 overflow-y-auto space-y-3 pr-2 custom-scrollbar border divide-y divide-slate-100 dark:divide-slate-800 rounded-lg bg-slate-50 dark:bg-slate-900/50">
+                      {loggingRoutine.txs.map((tx, idx) => {
+                         const parentCat = tx.category ? tx.category.split(":")[0].trim() : "";
+                         const subCat = tx.category && tx.category.includes(":") ? tx.category.split(":")[1].trim() : "";
+                         const parentOptions = categories.map(c => c.name);
+                         const subOptions = categories.find(c => c.name === parentCat)?.subcategories || [];
+                         
+                         return (
+                         <div key={idx} className="p-3 relative group">
+                            {loggingRoutine.txs.length > 1 && (
+                               <button type="button" onClick={() => {
+                                  const newTxs = [...loggingRoutine.txs];
+                                  newTxs.splice(idx, 1);
+                                  setLoggingRoutine({ ...loggingRoutine, txs: newTxs });
+                               }} className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-50 group-hover:opacity-100 transition-opacity">
+                                  <Trash2 className="w-4 h-4" />
+                               </button>
+                            )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pr-6">
+                                <Input label="Amount" type="number" step="0.01" value={tx.amount} onChange={(e) => { const newTx = [...loggingRoutine.txs]; newTx[idx].amount = e.target.value; setLoggingRoutine({...loggingRoutine, txs: newTx}); }} required placeholder="0.00" />
+                                <Input label="Description" type="text" value={tx.description} onChange={(e) => { const newTx = [...loggingRoutine.txs]; newTx[idx].description = e.target.value; setLoggingRoutine({...loggingRoutine, txs: newTx}); }} required placeholder="e.g. Coffee" />
+                                
+                                <div className="space-y-1">
+                                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
+                                   <div className="relative">
+                                     <select value={parentCat} onChange={(e) => { 
+                                        const p = e.target.value;
+                                        const newTx = [...loggingRoutine.txs]; 
+                                        newTx[idx].category = p; 
+                                        setLoggingRoutine({...loggingRoutine, txs: newTx}); 
+                                     }} className="appearance-none w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 pr-8 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-ellipsis">
+                                        <option value="">Select Category</option>
+                                        {parentOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                                     </select>
+                                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                   </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Subcategory</label>
+                                   <div className="relative">
+                                     <select value={subCat} onChange={(e) => { 
+                                        const s = e.target.value;
+                                        const newTx = [...loggingRoutine.txs]; 
+                                        newTx[idx].category = `${parentCat}: ${s}`;
+                                        setLoggingRoutine({...loggingRoutine, txs: newTx}); 
+                                     }} disabled={!parentCat || subOptions.length === 0} className="appearance-none w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 pr-8 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:opacity-50 text-ellipsis">
+                                        <option value="">Select Subcategory</option>
+                                        {subOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                                     </select>
+                                     <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
+                       )})}
+                       
+                       <div className="p-3 bg-slate-100 dark:bg-slate-800/50 flex justify-center border-t border-slate-100 dark:border-slate-800">
+                          <button type="button" onClick={() => {
+                             setLoggingRoutine(prev => ({
+                                ...prev,
+                                txs: [...prev.txs, { amount: "", description: "", category: "Uncategorized", type: "expense", id: Math.random() }]
+                             }));
+                          }} className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
+                             <Plus className="w-4 h-4" /> Add Item
+                          </button>
+                       </div>
+                    </div>
+                   
+                   <div className="flex justify-between items-center pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <div className="font-bold text-slate-900 dark:text-white">
+                         Total: ₹{loggingRoutine.txs.reduce((sum, t) => sum + (Number(t.amount)||0), 0).toFixed(2)}
+                      </div>
+                      <div className="flex gap-3">
+                         <Button variant="ghost" type="button" onClick={() => setLoggingRoutine(null)}>Cancel</Button>
+                         <Button type="submit" disabled={isSubmitting || loggingRoutine.txs.length === 0}>{isSubmitting ? "Logging..." : "Log Now"}</Button>
+                      </div>
+                   </div>
+                </form>
+             )}
+          </Modal>
+       </div>
+    );
+ }

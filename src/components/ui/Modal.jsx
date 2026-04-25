@@ -12,7 +12,7 @@ export function Modal({ isOpen, onClose, title, children }) {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-4 overflow-y-auto flex-1">
+        <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
           {children}
         </div>
       </div>

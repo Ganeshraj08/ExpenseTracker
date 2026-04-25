@@ -5,7 +5,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, AreaChart, Are
 import { useExpenses } from "../context/ExpenseContext";
 import { useAuth } from "../hooks/useAuth";
 import { formatCurrency } from "../utils/helpers";
-import { Clock, TrendingDown, Target, ArrowLeft, Zap, Award, Flame } from "lucide-react";
+import { ArrowLeft, Zap, Award, Flame, Sparkles } from "lucide-react";
+import { generateFinancialInsights } from "../services/gemini";
 
 const COLORS = ['#2563eb', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#10b981', '#f43f5e', '#14b8a6', '#f97316'];
 
@@ -53,6 +54,9 @@ export function Analytics() {
   const [timeframe, setTimeframe] = useState('month');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const [insights, setInsights] = useState([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   const filteredExpenses = useMemo(() => {
     if (timeframe === 'all') return expenses;
@@ -163,6 +167,42 @@ export function Analytics() {
      });
   }, [categoryFilteredExpenses]);
 
+  const sixMonthTrendData = useMemo(() => {
+     if (expenses.length === 0) return [];
+     const monthsMap = {};
+     const now = new Date();
+     for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const name = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        monthsMap[name] = { name, income: 0, expense: 0, sortKey: d.getTime() };
+     }
+
+     expenses.forEach(e => {
+        const d = new Date(e.date);
+        const name = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        if (monthsMap[name]) {
+           if (e.type === 'income') monthsMap[name].income += e.amount;
+           else monthsMap[name].expense += e.amount;
+        }
+     });
+
+     return Object.values(monthsMap).sort((a, b) => a.sortKey - b.sortKey);
+  }, [expenses]);
+
+  const handleGenerateInsights = async () => {
+     setInsightsLoading(true);
+     try {
+        const textFocus = timeframe === 'all' ? 'All time stats' : timeframe === 'month' ? 'This month' : 'Last 7 days';
+        const aiInsights = await generateFinancialInsights(categoryFilteredExpenses, textFocus);
+        setInsights(aiInsights);
+     } catch (err) {
+        console.error(err);
+        setInsights(["Failed to load insights. Please try again later."]);
+     } finally {
+        setInsightsLoading(false);
+     }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
@@ -234,6 +274,40 @@ export function Analytics() {
             </CardContent>
          </Card>
       </div>
+
+      {/* AI Smart Insights Section */}
+      <Card className="border border-indigo-200 dark:border-indigo-800 shadow-sm relative overflow-hidden bg-gradient-to-r from-indigo-50/50 to-blue-50/50 dark:from-indigo-900/10 dark:to-blue-900/10">
+         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+            <Sparkles className="w-24 h-24 text-indigo-500" />
+         </div>
+         <CardHeader className="flex flex-row items-center justify-between z-10 relative">
+            <div>
+               <CardTitle className="flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
+                  <Sparkles className="w-5 h-5 text-indigo-500" /> AI Smart Insights
+               </CardTitle>
+               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Get personalized financial advice based on your current spending snapshot.</p>
+            </div>
+            <Button onClick={handleGenerateInsights} disabled={insightsLoading || categoryFilteredExpenses.length === 0} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-transform active:scale-95">
+               {insightsLoading ? 'Analyzing...' : 'Generate Insights'}
+            </Button>
+         </CardHeader>
+         {insights.length > 0 && (
+            <CardContent className="z-10 relative mt-2 animate-in slide-in-from-top-4 fade-in duration-500">
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {insights.map((insight, i) => (
+                     <div key={i} className="bg-white/60 dark:bg-slate-900/60 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800/50 backdrop-blur-sm sm:hover:-translate-y-1 transition-transform relative group">
+                        <div className="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center border-4 border-indigo-50 dark:border-slate-800">
+                           <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{i + 1}</span>
+                        </div>
+                        <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium mt-1">
+                           {insight}
+                        </p>
+                     </div>
+                  ))}
+               </div>
+            </CardContent>
+         )}
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="flex flex-col col-span-1 border-slate-200 dark:border-slate-800 shadow-sm">
@@ -380,6 +454,58 @@ export function Analytics() {
             )}
          </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+         <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardHeader>
+               <CardTitle>Daily Outflow Tracker</CardTitle>
+            </CardHeader>
+            <CardContent>
+               {areaData.length === 0 ? (
+                  <div className="h-64 flex items-center justify-center text-slate-500">No time-series data to map.</div>
+               ) : (
+                  <div className="h-[250px] w-full">
+                     <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={areaData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
+                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} dy={10} minTickGap={20} />
+                           <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} tick={{ fill: '#64748b', fontSize: 10 }} />
+                           <Tooltip cursor={{ fill: '#334155', opacity: 0.1 }} contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', color: '#fff' }} formatter={(value) => formatCurrency(value)} />
+                           <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
+                           <Bar dataKey="income" name="Income" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={40} />
+                           <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[2, 2, 0, 0]} maxBarSize={40} />
+                        </BarChart>
+                     </ResponsiveContainer>
+                  </div>
+               )}
+            </CardContent>
+         </Card>
+
+         <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardHeader>
+               <CardTitle>6-Month Macro Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+               {sixMonthTrendData.length === 0 ? (
+                  <div className="h-64 flex items-center justify-center text-slate-500">No macro trend data.</div>
+               ) : (
+                  <div className="h-[250px] w-full">
+                     <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={sixMonthTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" opacity={0.15} />
+                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} dy={10} />
+                           <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => `₹${val}`} tick={{ fill: '#64748b', fontSize: 10 }} />
+                           <Tooltip cursor={{ fill: '#334155', opacity: 0.1 }} contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '8px', color: '#fff' }} formatter={(value) => formatCurrency(value)} />
+                           <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
+                           <Bar dataKey="income" name="Income" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={50} />
+                           <Bar dataKey="expense" name="Expense" fill="#6366f1" radius={[2, 2, 0, 0]} maxBarSize={50} />
+                        </BarChart>
+                     </ResponsiveContainer>
+                  </div>
+               )}
+            </CardContent>
+         </Card>
+      </div>
       
     </div>
   );

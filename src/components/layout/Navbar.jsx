@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Menu as MenuIcon, Plus as PlusIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu as MenuIcon, Plus as PlusIcon, Search as SearchIcon } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
+import { SearchModal } from "../ui/SearchModal";
 import { ExpenseForm } from "../expenses/ExpenseForm";
 import { useExpenses } from "../../context/ExpenseContext";
 import { useAuth } from "../../hooks/useAuth";
@@ -9,16 +10,30 @@ import { useToast } from "../../context/ToastContext";
 
 export function Navbar({ onMobileMenuClick }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { addExpense } = useExpenses();
   const { user } = useAuth();
   const { addToast } = useToast();
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+       if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          setIsSearchOpen(true);
+       }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
 
-  const handleAddExpense = async (data) => {
+
+  const handleAddExpense = async (data, keepOpen = false) => {
     try {
       await addExpense(data);
-      setIsModalOpen(false);
+      if (!keepOpen) {
+        setIsModalOpen(false);
+      }
     } catch (error) {
       addToast("Failed to add expense. Check console for details.", "error");
     }
@@ -37,7 +52,16 @@ export function Navbar({ onMobileMenuClick }) {
           <h1 className="text-xl font-semibold text-primary md:hidden">வரவு-செலவு</h1>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button 
+             onClick={() => setIsSearchOpen(true)}
+             className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+             aria-label="Search"
+             title="Search (Cmd/Ctrl + K)"
+          >
+             <SearchIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
+          
           <Button className="gap-2 rounded-full sm:rounded-lg shadow-sm hover:-translate-y-0.5 transition-transform" size="sm" onClick={() => setIsModalOpen(true)}>
             <PlusIcon className="w-4 h-4" />
             <span className="hidden sm:inline">Add Transaction</span>
@@ -68,6 +92,8 @@ export function Navbar({ onMobileMenuClick }) {
           <PlusIcon className="w-6 h-6" />
         </button>
       </div>
+
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }

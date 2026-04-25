@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -6,7 +7,7 @@ import {
   CardTitle,
 } from "../components/ui/Card";
 import { formatCurrency, formatDate } from "../utils/helpers";
-import { ArrowUpRight, ArrowDownRight, IndianRupee, Wallet } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, IndianRupee, Wallet, Receipt } from "lucide-react";
 import { useExpenses } from "../context/ExpenseContext";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -199,10 +200,13 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="col-span-1 lg:col-span-2 flex flex-col">
-          <CardHeader className="p-4 sm:p-6">
+          <CardHeader className="p-4 sm:p-6 flex flex-row items-center justify-between">
             <CardTitle className="text-lg sm:text-xl">
               Recent Transactions
             </CardTitle>
+            <Link to="/transactions" className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">
+               View All
+            </Link>
           </CardHeader>
           <CardContent className="p-0 flex-1">
             {recentTransactions.length === 0 ? (
@@ -223,8 +227,9 @@ export function Dashboard() {
                         <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                       <div>
-                        <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[120px] sm:max-w-[200px]">
+                        <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[120px] sm:max-w-[200px] flex items-center gap-1.5">
                           {tx.description}
+                          {tx.receiptImage && <Receipt className="w-3.5 h-3.5 text-slate-400" />}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
                           {formatDate(tx.date)} •{" "}
@@ -260,9 +265,9 @@ export function Dashboard() {
                 <p className="text-xs sm:text-sm">No expense data</p>
               </div>
             ) : (
-              <div className="w-full flex-1 flex flex-col mt-2" onMouseLeave={() => setActiveIndex(0)}>
-                <div className="h-56 sm:h-72 w-full flex-shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
+              <div className="w-full flex-1 flex flex-col mt-2 min-h-0 min-w-0" onMouseLeave={() => setActiveIndex(0)}>
+                <div className="h-56 sm:h-72 w-full flex-shrink-0 min-h-0 min-w-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <PieChart>
                       <Pie
                         activeIndex={activeIndex}

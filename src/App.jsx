@@ -5,6 +5,7 @@ import { Transactions } from "./pages/Transactions";
 import { Analytics } from "./pages/Analytics";
 import { Settings } from "./pages/Settings";
 import { Routines } from "./pages/Routines";
+import { Vault } from "./pages/Vault";
 import { AuthProvider } from "./context/AuthContext";
 import { ExpenseProvider } from "./context/ExpenseContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -29,6 +30,7 @@ function App() {
                   <Route path="/transactions" element={<Transactions />} />
                   <Route path="/analytics" element={<Analytics />} />
                   <Route path="/routines" element={<Routines />} />
+                  <Route path="/vault" element={<Vault />} />
                   <Route path="/settings" element={<Settings />} />
                 </Route>
                 </Routes>
