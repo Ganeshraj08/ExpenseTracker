@@ -7,6 +7,7 @@ import { useRecurringExpenses } from "../../context/RecurringExpenseContext";
 import { useToast } from "../../context/ToastContext";
 import { Mic, Sparkles, Loader2, Camera, X, ChevronDown } from "lucide-react";
 import { parseTransactionNLP, parseReceiptImage } from "../../services/gemini";
+import { useUserPreferences } from "../../context/UserPreferencesContext";
 
 function SearchableInput({
   value,
@@ -51,6 +52,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
   const { addExpense } = useExpenses();
   const { recurringExpenses, addRecurringExpense } = useRecurringExpenses();
   const { addToast } = useToast();
+  const { preferences } = useUserPreferences();
 
   const [showRoutineImport, setShowRoutineImport] = useState(false);
 
@@ -114,7 +116,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
         }
       });
 
-      const result = await parseTransactionNLP(text, validCategories);
+      const result = await parseTransactionNLP(text, validCategories, preferences?.geminiApiKey);
 
       const dataArray = result.data || [];
 
@@ -186,7 +188,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
           reader.readAsDataURL(file);
         });
 
-        const data = await parseReceiptImage(base64, "image/jpeg", validCategories);
+        const data = await parseReceiptImage(base64, "image/jpeg", validCategories, preferences?.geminiApiKey);
         if (data) {
           data.receiptImage = base64;
           parsedResults.push(data);

@@ -1,11 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export async function parseTransactionNLP(transcript, categories) {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-    if (!apiKey) {
-        throw new Error("VITE_GEMINI_API_KEY is empty or undefined. Vite did not load your .env file. YOU MUST kill the terminal running the server (Ctrl+C) and run `npm run dev` again.");
+export async function parseTransactionNLP(transcript, categories, userApiKey) {
+    if (!userApiKey) {
+        throw new Error("Gemini API Key is required. Please set it in Settings.");
     }
+
+    const apiKey = userApiKey;
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -73,12 +73,12 @@ Example output:
     }
 }
 
-export async function parseReceiptImage(base64Image, mimeType, categories) {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-    if (!apiKey) {
-        throw new Error("VITE_GEMINI_API_KEY is empty or undefined. Vite did not load your .env file.");
+export async function parseReceiptImage(base64Image, mimeType, categories, userApiKey) {
+    if (!userApiKey) {
+        throw new Error("Gemini API Key is required. Please set it in Settings.");
     }
+
+    const apiKey = userApiKey;
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -138,12 +138,12 @@ Example output:
     }
 }
 
-export async function generateFinancialInsights(transactions, timeframe) {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-    if (!apiKey) {
-        throw new Error("API key is empty processing stats.");
+export async function generateFinancialInsights(transactions, timeframe, userApiKey) {
+    if (!userApiKey) {
+        throw new Error("Gemini API Key is required to generate insights. Please set it in Settings.");
     }
+    
+    const apiKey = userApiKey;
     
     if (!transactions || transactions.length === 0) {
        return ["Not enough data in this timeframe to generate insights."];

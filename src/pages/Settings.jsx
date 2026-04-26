@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
@@ -8,6 +8,7 @@ import { useCategories } from "../context/CategoryContext";
 import { useRecurringExpenses } from "../context/RecurringExpenseContext";
 import { useToast } from "../context/ToastContext";
 import { useModal } from "../context/ModalContext";
+import { useUserPreferences } from "../context/UserPreferencesContext";
 import { downloadCSV } from "../utils/helpers";
 import { Download, AlertTriangle, Pencil, Tags, Plus, Trash2, ChevronDown, ChevronRight, Repeat } from "lucide-react";
 
@@ -19,9 +20,29 @@ export function Settings() {
    const { recurringExpenses, deleteRecurringExpense, clearAllRecurringExpenses } = useRecurringExpenses();
    const { addToast } = useToast();
    const { confirm, prompt } = useModal();
+   const { preferences, updatePreferences } = useUserPreferences();
 
    const [isClearing, setIsClearing] = useState(false);
    const [expandedCategories, setExpandedCategories] = useState({});
+   const [apiKeyInput, setApiKeyInput] = useState(preferences?.geminiApiKey || "");
+   const [isSavingKey, setIsSavingKey] = useState(false);
+
+   // Sync API key input with loaded preferences
+   useEffect(() => {
+      setApiKeyInput(preferences?.geminiApiKey || "");
+   }, [preferences?.geminiApiKey]);
+
+   const handleSaveApiKey = async () => {
+      setIsSavingKey(true);
+      try {
+         await updatePreferences({ geminiApiKey: apiKeyInput });
+         addToast("API Key saved successfully", "success");
+      } catch (error) {
+         addToast("Failed to save API Key", "error");
+      } finally {
+         setIsSavingKey(false);
+      }
+   };
 
    const handleClearData = async () => {
       const isConfirmed = await confirm({
@@ -244,6 +265,32 @@ export function Settings() {
 
          {user && (
             <>
+               <Card>
+                  <CardHeader>
+                     <CardTitle>AI Assistant Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                     <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-900 dark:text-slate-100">Gemini API Key</label>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                           Get your free API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">Google AI Studio</a>. This key is stored securely in your database and allows the AI agent to parse natural language and receipts.
+                        </p>
+                        <div className="flex gap-2 mt-2">
+                           <input 
+                              type="password" 
+                              value={apiKeyInput}
+                              onChange={(e) => setApiKeyInput(e.target.value)}
+                              placeholder="AIzaSy..."
+                              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           />
+                           <Button onClick={handleSaveApiKey} disabled={isSavingKey || apiKeyInput === preferences?.geminiApiKey}>
+                              {isSavingKey ? 'Saving...' : 'Save'}
+                           </Button>
+                        </div>
+                     </div>
+                  </CardContent>
+               </Card>
+
                <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                      <CardTitle className="flex items-center gap-2">

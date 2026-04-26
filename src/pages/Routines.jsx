@@ -8,6 +8,7 @@ import { Modal } from "../components/ui/Modal";
 import { useModal } from "../context/ModalContext";
 import { useCategories } from "../context/CategoryContext";
 import { useToast } from "../context/ToastContext";
+import { useUserPreferences } from "../context/UserPreferencesContext";
 import { Repeat, Plus, Trash2, Pencil, Calendar, Clock, CheckCircle, AlertCircle, Mic, Sparkles, Loader2, ChevronDown } from "lucide-react";
 import { parseTransactionNLP } from "../services/gemini";
 
@@ -48,6 +49,7 @@ export function Routines() {
 
    const { addToast } = useToast();
    const { confirm } = useModal();
+   const { preferences } = useUserPreferences();
    
    const [isModalOpen, setIsModalOpen] = useState(false);
    const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,7 +73,7 @@ export function Routines() {
       if (!transcript.trim()) return;
       setAiParsing(true);
       try {
-         const result = await parseTransactionNLP(transcript, categories.map(c => c.name));
+         const result = await parseTransactionNLP(transcript, categories.map(c => c.name), preferences?.geminiApiKey);
          const dataArray = result.data || [];
          if (dataArray.length > 0) {
             const newTxs = dataArray.map(t => {

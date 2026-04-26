@@ -13,6 +13,7 @@ import { CategoryProvider } from "./context/CategoryContext";
 import { ToastProvider } from "./context/ToastContext";
 import { ModalProvider } from "./context/ModalContext";
 import { RecurringExpenseProvider } from "./context/RecurringExpenseContext";
+import { UserPreferencesProvider } from "./context/UserPreferencesContext";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
       <ToastProvider>
         <ModalProvider>
           <AuthProvider>
+          <UserPreferencesProvider>
         <CategoryProvider>
           <ExpenseProvider>
             <RecurringExpenseProvider>
@@ -38,6 +40,7 @@ function App() {
             </RecurringExpenseProvider>
           </ExpenseProvider>
         </CategoryProvider>
+        </UserPreferencesProvider>
       </AuthProvider>
       </ModalProvider>
       </ToastProvider>
