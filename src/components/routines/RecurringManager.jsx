@@ -110,7 +110,14 @@ export function RecurringManager() {
                     date: new Date().toISOString()
                   });
               }
-              await updateRecurringExpense(expense.id, { lastExecuted: todayString });
+               const currentHistory = expense.history || [];
+               const updatedHistory = currentHistory.includes(todayString)
+                 ? currentHistory
+                 : [...currentHistory, todayString];
+               await updateRecurringExpense(expense.id, {
+                 lastExecuted: todayString,
+                 history: updatedHistory
+               });
               addToast(`Logged routine: ${routineTitle}`, "success");
            } catch(error) {
               console.error("Error adding routine expense", error);

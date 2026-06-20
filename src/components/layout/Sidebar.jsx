@@ -79,6 +79,7 @@ export function Sidebar({ isMobileOpen, onClose }) {
                     `https://ui-avatars.com/api/?name=${user.email}`
                   }
                   alt="User"
+                  referrerPolicy="no-referrer"
                   className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 flex-shrink-0"
                 />
                 <div className="text-sm overflow-hidden flex-1 min-w-0 pr-2">

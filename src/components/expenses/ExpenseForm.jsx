@@ -302,6 +302,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
             frequency,
             time,
             lastExecuted: new Date().toLocaleDateString('en-CA'), // skip today
+            history: [new Date().toLocaleDateString('en-CA')],
             transactions: [{
                amount: parseFloat(amount),
                description: description || "Routine Item",
@@ -433,6 +434,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
                   frequency: item.frequency || "Monthly",
                   time: item.time || "",
                   lastExecuted: new Date().toLocaleDateString('en-CA'),
+                  history: [new Date().toLocaleDateString('en-CA')],
                   transactions: [{
                      amount: parseFloat(item.amount),
                      description: item.description || "Routine Item",
@@ -452,6 +454,7 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
                frequency: freq,
                time: "",
                lastExecuted: new Date().toLocaleDateString('en-CA'),
+               history: [new Date().toLocaleDateString('en-CA')],
                transactions: txs
             });
          }
@@ -601,7 +604,19 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
                if (!recurringItemsByFreq[freq]) recurringItemsByFreq[freq] = [];
                recurringItemsByFreq[freq].push({ amount: parseFloat(item.amount), description: item.description || "Routine Item", category: finalCategory, type: item.type?.toLowerCase() === "income" ? "income" : "expense" });
             } else {
-               await addRecurringExpense({ title: item.description || "Routine", frequency: item.frequency || "Monthly", time: item.time || "", lastExecuted: new Date().toLocaleDateString('en-CA'), transactions: [{ amount: parseFloat(item.amount), description: item.description || "Routine Item", category: finalCategory, type: item.type?.toLowerCase() === "income" ? "income" : "expense" }] });
+               await addRecurringExpense({
+                  title: item.description || "Routine",
+                  frequency: item.frequency || "Monthly",
+                  time: item.time || "",
+                  lastExecuted: new Date().toLocaleDateString('en-CA'),
+                  history: [new Date().toLocaleDateString('en-CA')],
+                  transactions: [{
+                     amount: parseFloat(item.amount),
+                     description: item.description || "Routine Item",
+                     category: finalCategory,
+                     type: item.type?.toLowerCase() === "income" ? "income" : "expense"
+                  }]
+               });
             }
         }
         addedCount++;
@@ -609,7 +624,14 @@ export function ExpenseForm({ onSubmit, onCancel, initialData = null }) {
       
       if (groupBundle) {
          for (const [freq, txs] of Object.entries(recurringItemsByFreq)) {
-            await addRecurringExpense({ title: bundleTitle.trim() ? bundleTitle : `Imported ${freq} Routine`, frequency: freq, time: "", lastExecuted: new Date().toLocaleDateString('en-CA'), transactions: txs });
+            await addRecurringExpense({
+               title: bundleTitle.trim() ? bundleTitle : `Imported ${freq} Routine`,
+               frequency: freq,
+               time: "",
+               lastExecuted: new Date().toLocaleDateString('en-CA'),
+               history: [new Date().toLocaleDateString('en-CA')],
+               transactions: txs
+            });
          }
       }
 
